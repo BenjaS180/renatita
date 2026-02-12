@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Bird - Easter Egg 🐱</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .game-container {
+            text-align: center;
+            position: relative;
+        }
+
+        h1 {
+            color: white;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        #gameCanvas {
+            border: 4px solid white;
+            border-radius: 10px;
+            background: linear-gradient(180deg, #87CEEB 0%, #98D8E8 100%);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+        }
+
+        .score {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 3em;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+
+        .instructions {
+            color: white;
+            font-size: 1.2em;
+            margin-top: 20px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-back {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 12px 30px;
+            font-size: 1.1em;
+            border: 2px solid white;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-top: 15px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-back:hover {
+            background: rgba(255, 255, 255, 0.4);
+            transform: scale(1.05);
+        }
+
+        .gift-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .gift-modal.active {
+            display: flex;
+        }
+
+        .gift-content {
+            background: white;
+            padding: 50px;
+            border-radius: 30px;
+            text-align: center;
+            max-width: 600px;
+            animation: scaleIn 0.5s ease-out;
+        }
+
+        .gift-content h2 {
+            color: #e91e63;
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+
+        .gift-content p {
+            font-size: 1.5em;
+            color: #555;
+            margin: 20px 0;
+            line-height: 1.6;
+        }
+
+        .gift-emoji {
+            font-size: 5em;
+            margin: 20px 0;
+            animation: bounce 1s infinite;
+        }
+
+        .btn-continue {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .btn-continue:hover {
+            transform: scale(1.1);
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0);
+            }
+            to {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🐱 Flappy Gatito 🐱</h1>
+        <div class="score" id="score">0</div>
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+        <div class="instructions">
+            Click o Espacio para volar<br>
+            ¡Llega a 20 puntos para un regalo especial! 🎁
+        </div>
+        <a href="san-valentin.html" class="btn-back">← Volver</a>
+    </div>
+
+    <div class="gift-modal" id="giftModal">
+        <div class="gift-content">
+            <div class="gift-emoji">🎉✈️🇲🇽</div>
+            <h2>¡FELICIDADES!</h2>
+            <p>
+                ¡Lo lograste! 🎊<br><br>
+                Un regalito especial:<br>
+                <strong style="color: #e91e63; font-size: 1.3em;">
+                    ¡PASAJES PARA MÉXICO! 🌴
+                </strong>
+                <br><br>
+                Uno de los tantos viajes que tengo pensado de la mano de usted 💕
+            </p>
+            <button class="btn-continue" onclick="closeModal()">Esaaaa! 💖</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const giftModal = document.getElementById('giftModal');
+
+        let giftShown = false;
+
+        // Variables del juego
+        let bird = {
+            x: 50,
+            y: canvas.height / 2,
+            width: 30,  // Reducido para mejor hitbox
+            height: 30, // Reducido para mejor hitbox
+            velocity: 0,
+            gravity: 0.4,
+            jump: -8
+        };
+
+        let pipes = [];
+        let score = 0;
+        let gameOver = false;
+        let gameStarted = false;
+        let frameCount = 0;
+
+        const pipeWidth = 60;
+        const pipeGap = 200;  // Aumentado para más espacio
+        const pipeSpeed = 2;
+
+        // Cargar imagen del gatito (usaremos un emoji si no hay imagen)
+        const birdEmoji = '🐱';
+
+        // Crear obstáculos
+        function createPipe() {
+            const minHeight = 50;
+            const maxHeight = canvas.height - pipeGap - minHeight;
+            const height = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
+            
+            pipes.push({
+                x: canvas.width,
+                topHeight: height,
+                bottomY: height + pipeGap,
+                scored: false
+            });
+        }
+
+        // Dibujar pájaro (gatito)
+        function drawBird() {
+            ctx.font = '40px Arial';
+            ctx.fillText(birdEmoji, bird.x, bird.y);
+        }
+
+        // Dibujar tubos
+        function drawPipes() {
+            ctx.fillStyle = '#2ecc71';
+            pipes.forEach(pipe => {
+                // Tubo superior
+                ctx.fillRect(pipe.x, 0, pipeWidth, pipe.topHeight);
+                // Tubo inferior
+                ctx.fillRect(pipe.x, pipe.bottomY, pipeWidth, canvas.height - pipe.bottomY);
+                
+                // Borde de los tubos
+                ctx.strokeStyle = '#27ae60';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(pipe.x, 0, pipeWidth, pipe.topHeight);
+                ctx.strokeRect(pipe.x, pipe.bottomY, pipeWidth, canvas.height - pipe.bottomY);
+            });
+        }
+
+        // Actualizar física
+        function update() {
+            if (!gameStarted || gameOver) return;
+
+            // Actualizar pájaro
+            bird.velocity += bird.gravity;
+            bird.y += bird.velocity;
+
+            // Crear nuevos tubos
+            frameCount++;
+            if (frameCount % 90 === 0) {
+                createPipe();
+            }
+
+            // Actualizar tubos
+            pipes.forEach((pipe, index) => {
+                pipe.x -= pipeSpeed;
+
+                // Contar puntos
+                if (!pipe.scored && pipe.x + pipeWidth < bird.x) {
+                    score++;
+                    pipe.scored = true;
+                    scoreElement.textContent = score;
+
+                    // Mostrar regalo al llegar a 20 puntos
+                    if (score >= 20 && !giftShown) {
+                        giftShown = true;
+                        setTimeout(() => {
+                            showGiftModal();
+                        }, 500);
+                    }
+                }
+
+                // Eliminar tubos fuera de pantalla
+                if (pipe.x + pipeWidth < 0) {
+                    pipes.splice(index, 1);
+                }
+            });
+
+            // Verificar colisiones
+            checkCollisions();
+        }
+
+        // Verificar colisiones
+        function checkCollisions() {
+            // Colisión con el suelo o techo
+            if (bird.y + bird.height > canvas.height || bird.y < 0) {
+                endGame();
+            }
+
+            // Colisión con tubos (con margen de tolerancia)
+            pipes.forEach(pipe => {
+                // Añadir margen de tolerancia de 5px
+                const margin = 5;
+                if (bird.x + bird.width - margin > pipe.x && bird.x + margin < pipe.x + pipeWidth) {
+                    if (bird.y + margin < pipe.topHeight || bird.y + bird.height - margin > pipe.bottomY) {
+                        endGame();
+                    }
+                }
+            });
+        }
+
+        // Dibujar todo
+        function draw() {
+            // Limpiar canvas
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Dibujar elementos
+            drawPipes();
+            drawBird();
+
+            // Mostrar mensaje de inicio
+            if (!gameStarted) {
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Click para empezar', canvas.width / 2, canvas.height / 2);
+                ctx.textAlign = 'left';
+            }
+
+            // Mostrar mensaje de game over
+            if (gameOver) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 36px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Game Over', canvas.width / 2, canvas.height / 2 - 30);
+                ctx.font = '24px Arial';
+                ctx.fillText('Puntuación: ' + score, canvas.width / 2, canvas.height / 2 + 10);
+                ctx.font = '20px Arial';
+                ctx.fillText('Click para reintentar', canvas.width / 2, canvas.height / 2 + 50);
+                ctx.textAlign = 'left';
+            }
+        }
+
+        // Loop del juego
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Saltar
+        function jump() {
+            if (!gameStarted) {
+                gameStarted = true;
+            }
+            
+            if (gameOver) {
+                resetGame();
+                return;
+            }
+
+            bird.velocity = bird.jump;
+        }
+
+        // Terminar juego
+        function endGame() {
+            gameOver = true;
+        }
+
+        // Reiniciar juego
+        function resetGame() {
+            bird.y = canvas.height / 2;
+            bird.velocity = 0;
+            pipes = [];
+            score = 0;
+            scoreElement.textContent = score;
+            gameOver = false;
+            gameStarted = false;
+            frameCount = 0;
+        }
+
+        // Mostrar modal del regalo
+        function showGiftModal() {
+            giftModal.classList.add('active');
+        }
+
+        // Cerrar modal
+        function closeModal() {
+            giftModal.classList.remove('active');
+        }
+
+        // Event listeners
+        canvas.addEventListener('click', jump);
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                jump();
+            }
+        });
+
+        // Iniciar juego
+        gameLoop();
+    </script>
+</body>
+</html>
