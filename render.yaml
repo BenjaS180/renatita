@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: renatita
+    env: static
+    buildCommand: python3 generar-sitio.py
+    staticPublishPath: .
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /san-valentin.html
